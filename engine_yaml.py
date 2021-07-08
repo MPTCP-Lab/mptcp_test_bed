@@ -97,36 +97,28 @@ print(gws)
 for link in link_list:
     iface1 = link.get_ifaces()[0]
     iface2 = link.get_ifaces()[1]
-    if iface1.node.type == 'PC' and iface2.node.type == 'router':
+
+    if iface1.node.type == "PC" or iface2.node.type == "PC": 
+
+        if iface1.node.type == 'router':
+            iface1, iface2 = iface2, iface1
+
         gateway = str(iface2.get_ip4()).split("/")[0]
-        pieces = re.split("[./]", str(iface1.get_ip4()));
+        pieces = re.split("[./]", str(iface1.get_ip4()))
         ip = "{}.{}.{}.{}".format(pieces[0], pieces[1], pieces[2], pieces[3])
         subnet = "{}.{}.{}.{}/{}".format(pieces[0], pieces[1], pieces[2], 0, pieces[4]) 
         table_count = gws[iface1.node.name]
         iface1.node.cmd('ip rule add from {} table {}'.format(ip, table_count))
         iface1.node.cmd('ip route add {} dev {} scope link table {}'.format(subnet, iface1.name, table_count))
-        iface1.node.cmd('ip route add default via {} dev {} table {}'.format(ip, iface1.name, table_count))
+        iface1.node.cmd('ip route add default via {} dev {} table {}'.format(gateway, iface1.name, table_count))
+        # iface1.node.cmd('ip route add default scope global nexthop via {} dev {}'.format(gateway, iface1.name))
         iface1.node.cmd('ip mptcp endpoint add {} dev {} subflow signal'.format(ip, iface1.name))
         iface1.node.cmd('ip mptcp limits set subflows 8 add_addr_accepted 8')
-        gws[iface1.node.name] += 1
-    elif iface2.node.type == 'PC' and iface1.node.type == 'router':
-        gateway = str(iface1.get_ip4()).split("/")[0]
-        pieces = re.split("[./]", str(iface2.get_ip4()));
-        ip = "{}.{}.{}.{}".format(pieces[0], pieces[1], pieces[2], pieces[3])
-        subnet = "{}.{}.{}.{}/{}".format(pieces[0], pieces[1], pieces[2], 0, pieces[4]) 
-        table_count = gws[iface1.node.name]
-        iface2.node.cmd('ip rule add from {} table {}'.format(ip, table_count))
-        iface2.node.cmd('ip route add {} dev {} scope link table {}'.format(subnet, iface2.name, table_count))
-        iface2.node.cmd('ip route add default via {} dev {} table {}'.format(ip, iface2.name, table_count))
-        iface2.node.cmd('ip mptcp endpoint add {} dev {} subflow signal'.format(ip, iface2.name))
-        iface2.node.cmd('ip mptcp limits set subflows 8 add_addr_accepted 8')
-
         gws[iface1.node.name] += 1
 
     print(iface1.node.name)
     print(iface2.node.name)
     print(gws)
-
 
 for elem in t_nodes:
     node = t_nodes[elem]
