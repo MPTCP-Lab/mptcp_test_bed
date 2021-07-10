@@ -57,12 +57,17 @@ for elem in data['nodes']:
 counter = 0
 for link in data['links']:
 
-    ip_prefixes = IpPrefixes(ip4_prefix="10.0.{}.0/24".format(counter))
+    iface1 = InterfaceData(
+        ip4="10.0.{}.1".format(counter),
+        ip4_mask=24,
+    )
+
+    iface2 = InterfaceData(
+        ip4="10.0.{}.2".format(counter),
+        ip4_mask=24,
+    )
+
     counter += 1
-    n1 = link['node1']
-    n2 = link['node2']
-    iface1 = ip_prefixes.create_iface(t_nodes[n1]['obj'])
-    iface2 = ip_prefixes.create_iface(t_nodes[n2]['obj'])
 
     bandwidth = link.get('bandwidth', None)
     delay = link.get('delay', None)
@@ -77,6 +82,13 @@ for link in data['links']:
         loss=loss,
         jitter=jitter
     )
+
+    n1 = link['node1']
+    n2 = link['node2']
+
+    # Maybe we should support swtiches in the future
+    if t_nodes[n2]['model'] == 'router':
+        n1, n2 = n2, n1
 
     session.add_link(t_nodes[n1]['obj'].id, t_nodes[n2]['obj'].id, iface1, iface2, options)
 
