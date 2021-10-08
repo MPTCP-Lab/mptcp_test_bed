@@ -15,8 +15,10 @@ import sys
 import os
 
 # Load Topology from JSON file
+path = os.path.dirname(sys.argv[0])
 filename =  sys.argv[1]
-with open(filename) as f_in:
+
+with open(os.path.join(path, "topologies", filename)) as f_in:
     data = yaml.load(f_in, Loader=yaml.FullLoader)
 
 print(data)
