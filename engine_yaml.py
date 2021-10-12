@@ -15,12 +15,18 @@ import sys
 import os
 import re
 
+if len(sys.argv) < 2:
+    exit(1)
+
 # Load Topology from YAML file
 path = os.path.dirname(sys.argv[0])
 filename = sys.argv[1]
 
-with open(os.path.join(path, "topologies", filename)) as file_in:
-    data = yaml.load(file_in, Loader=yaml.FullLoader)
+try:
+    with open(os.path.join(path, "topologies", filename)) as file_in:
+        data = yaml.load(file_in, Loader=yaml.FullLoader)
+except FileNotFoundError:
+    exit(1)
 
 # Create the new core session
 coreemu = globals().get("coreemu", CoreEmu())
@@ -106,6 +112,8 @@ for link in data["links"]:
                 ip4_mask=24,
             )
             switches_networks_counter[n1] += 1
+    else:  # PC-to-PC ??
+        exit(1)
 
     bandwidth = link.get("bandwidth", None)
     delay = link.get("delay", None)
