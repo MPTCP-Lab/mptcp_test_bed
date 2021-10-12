@@ -7,6 +7,7 @@ from core.emulator.coreemu import CoreEmu
 from core.emulator.data import InterfaceData, NodeOptions, LinkOptions
 from core.emulator.enumerations import EventTypes
 from core.nodes.base import CoreNode
+from core.nodes.network import SwitchNode
 
 # Parser related imports
 import yaml
@@ -31,13 +32,20 @@ session.set_state(EventTypes.CONFIGURATION_STATE)
 # Read nodes and add them to the session
 t_nodes = dict()
 for elem in data["nodes"]:
+
     name = elem["name"]
-    posX = elem.get("posX", 0)
-    posY = elem.get("posY", 0)
+    posX = elem.get("posX", 100)
+    posY = elem.get("posY", 100)
     model = elem.get("model", "router")
 
-    options = NodeOptions(model=model, x=posX, y=posY, name=name)
-    obj = session.add_node(CoreNode, options=options)
+    if model == "switch":
+        options = NodeOptions(x=posX, y=posY, name=name)
+        obj = session.add_node(SwitchNode, options=options)
+    elif model == "router" or model == "PC":
+        options = NodeOptions(model=model, x=posX, y=posY, name=name)
+        obj = session.add_node(CoreNode, options=options)
+    else:
+        exit(1)
 
     t_nodes[name] = {
         "obj": obj,
@@ -47,20 +55,57 @@ for elem in data["nodes"]:
     }
 
 # Read links and add them to the session
-counter = 0
+SORT_ORDER = {"router": 0, "switch": 1, "PC": 2}
+
+subnet_counter = 0
+switches_networks = {}
+switches_networks_counter = {}
+
 for link in data["links"]:
 
-    iface1 = InterfaceData(
-        ip4="10.0.{}.1".format(counter),
-        ip4_mask=24,
+    [n1, n2] = sorted(
+        [link["node1"], link["node2"]],
+        key=lambda val: SORT_ORDER[t_nodes[val]["model"]],
     )
 
-    iface2 = InterfaceData(
-        ip4="10.0.{}.2".format(counter),
-        ip4_mask=24,
-    )
+    if t_nodes[n1]["model"] == "router":
+        iface1 = InterfaceData(
+            ip4="10.0.{}.1".format(subnet_counter),
+            ip4_mask=24,
+        )
 
-    counter += 1
+        if t_nodes[n2]["model"] == "switch":
+            switches_networks[n2] = "10.0.{}".format(subnet_counter)
+            switches_networks_counter[n2] = 2
+            iface2 = InterfaceData(
+                ip4_mask=24,
+            )
+        else:
+            iface2 = InterfaceData(
+                ip4="10.0.{}.2".format(subnet_counter),
+                ip4_mask=24,
+            )
+        subnet_counter += 1
+
+    elif t_nodes[n1]["model"] == "switch":
+        iface1 = InterfaceData(
+            ip4_mask=24,
+        )
+
+        if t_nodes[n2]["model"] == "switch":
+            switches_networks[n2] = switches_networks[n1]
+            switches_networks_counter[n2] = switches_networks_counter[n1]
+            iface2 = InterfaceData(
+                ip4_mask=24,
+            )
+        else:  # n2 should be a host
+            iface2 = InterfaceData(
+                ip4="{}.{}".format(
+                    switches_networks[n1], switches_networks_counter[n1]
+                ),
+                ip4_mask=24,
+            )
+            switches_networks_counter[n1] += 1
 
     bandwidth = link.get("bandwidth", None)
     delay = link.get("delay", None)
@@ -71,15 +116,6 @@ for link in data["links"]:
     options = LinkOptions(
         bandwidth=bandwidth, delay=delay, dup=dup, loss=loss, jitter=jitter
     )
-
-    n1 = link["node1"]
-    n2 = link["node2"]
-
-    # Maybe we should support swtiches in the future
-    # This swap ensure that the router gets the .1 ip
-    # It's importan since core uses .1 as gateway by default
-    if t_nodes[n2]["model"] == "router":
-        n1, n2 = n2, n1
 
     session.add_link(
         t_nodes[n1]["obj"].id, t_nodes[n2]["obj"].id, iface1, iface2, options
