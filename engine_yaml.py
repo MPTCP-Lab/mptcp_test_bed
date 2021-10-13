@@ -7,7 +7,8 @@ from core.emulator.coreemu import CoreEmu
 from core.emulator.data import InterfaceData, NodeOptions, LinkOptions
 from core.emulator.enumerations import EventTypes
 from core.nodes.base import CoreNode
-from core.nodes.network import SwitchNode
+from core.nodes.network import SwitchNode, WlanNode
+from core.location.mobility import BasicRangeModel
 
 # Parser related imports
 import yaml
@@ -44,12 +45,26 @@ for elem in data["nodes"]:
     posY = elem.get("posY", 100)
     model = elem.get("model", "router")
 
-    if model == "switch":
-        options = NodeOptions(x=posX, y=posY, name=name)
-        obj = session.add_node(SwitchNode, options=options)
-    elif model == "router" or model == "PC":
+    if model == "router" or model == "PC":
         options = NodeOptions(model=model, x=posX, y=posY, name=name)
         obj = session.add_node(CoreNode, options=options)
+    elif model == "switch":
+        options = NodeOptions(x=posX, y=posY, name=name)
+        obj = session.add_node(SwitchNode, options=options)
+    elif model == "wlan":
+        options = NodeOptions(x=posX, y=posY, name=name)
+        obj = session.add_node(WlanNode, options=options)
+        session.mobility.set_model_config(
+            obj.id,
+            BasicRangeModel.name,
+            {
+                "range": elem.get("range", None),
+                "bandwidth": elem.get("bandwidth", None),
+                "delay": elem.get("delay", None),
+                "jitter": elem.get("jitter", None),
+                "error": elem.get("error", None),
+            },
+        )
     else:
         exit(1)
 
@@ -61,7 +76,7 @@ for elem in data["nodes"]:
     }
 
 # Read links and add them to the session
-SORT_ORDER = {"router": 0, "switch": 1, "PC": 2}
+SORT_ORDER = {"router": 0, "switch": 1, "wlan": 2, "PC": 3}
 
 subnet_counter = 0
 switches_networks = {}
@@ -80,15 +95,15 @@ for link in data["links"]:
             ip4_mask=24,
         )
 
-        if t_nodes[n2]["model"] == "switch":
+        if t_nodes[n2]["model"] == "switch" or t_nodes[n2]["model"] == "wlan":
             switches_networks[n2] = "10.0.{}".format(subnet_counter)
-            switches_networks_counter[n2] = 2
+            switches_networks_counter[n2] = 20
             iface2 = InterfaceData(
                 ip4_mask=24,
             )
-        else:
+        else:  # Host
             iface2 = InterfaceData(
-                ip4="10.0.{}.2".format(subnet_counter),
+                ip4="10.0.{}.20".format(subnet_counter),
                 ip4_mask=24,
             )
         subnet_counter += 1
@@ -98,13 +113,13 @@ for link in data["links"]:
             ip4_mask=24,
         )
 
-        if t_nodes[n2]["model"] == "switch":
+        if t_nodes[n2]["model"] == "switch" or t_nodes[n2]["model"] == "wlan":
             switches_networks[n2] = switches_networks[n1]
             switches_networks_counter[n2] = switches_networks_counter[n1]
             iface2 = InterfaceData(
                 ip4_mask=24,
             )
-        else:  # n2 should be a host
+        else:  # n2 Host
             iface2 = InterfaceData(
                 ip4="{}.{}".format(
                     switches_networks[n1], switches_networks_counter[n1]
@@ -112,6 +127,17 @@ for link in data["links"]:
                 ip4_mask=24,
             )
             switches_networks_counter[n1] += 1
+    # Here we'll assume that wlan can only be conected to hosts
+    elif t_nodes[n1]["model"] == "wlan":
+        iface1 = InterfaceData(
+            ip4_mask=24,
+        )
+
+        iface2 = InterfaceData(
+            ip4="{}.{}".format(switches_networks[n1], switches_networks_counter[n1]),
+            ip4_mask=24,
+        )
+        switches_networks_counter[n1] += 1
     else:  # PC-to-PC ??
         exit(1)
 

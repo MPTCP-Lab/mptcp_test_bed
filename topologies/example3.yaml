@@ -34,6 +34,14 @@ nodes:
   - 
     name: "h6"
     model: "PC"
+  
+  - 
+    name: "w1"
+    model: "wlan" 
+
+  - 
+    name: "h7"
+    model: "PC"
 
 links:
   - 
@@ -68,5 +76,12 @@ links:
     node1: "s3" 
     node2: "h6"
 
+  - 
+    node1: "s1"
+    node2: "w1"
+  
+  -
+    node1: "w1"
+    node2: "h7"
 
 scripts:
