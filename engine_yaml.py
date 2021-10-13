@@ -15,18 +15,22 @@ import yaml
 import sys
 import os
 import re
+import logging
+
+path = os.path.dirname(sys.argv[0])
+logging.basicConfig(filename=os.path.join(path, "engine.log"), filemode="w", force=True)
 
 if len(sys.argv) < 2:
+    logging.error("Not enough arguments")
     exit(1)
 
-# Load Topology from YAML file
-path = os.path.dirname(sys.argv[0])
+# Load YAML file
 filename = sys.argv[1]
-
 try:
     with open(os.path.join(path, "topologies", filename)) as file_in:
         data = yaml.load(file_in, Loader=yaml.FullLoader)
 except FileNotFoundError:
+    logging.error("File not found '{}'".format(filename))
     exit(1)
 
 # Create the new core session
@@ -66,6 +70,7 @@ for elem in data["nodes"]:
             },
         )
     else:
+        logging.error("Unknown '{}' model".format(model))
         exit(1)
 
     t_nodes[name] = {
@@ -139,6 +144,7 @@ for link in data["links"]:
         )
         switches_networks_counter[n1] += 1
     else:  # PC-to-PC ??
+        logging.error("PC-to-PC connection")
         exit(1)
 
     bandwidth = link.get("bandwidth", None)
