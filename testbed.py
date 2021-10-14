@@ -18,7 +18,9 @@ import re
 import logging
 
 path = os.path.dirname(sys.argv[0])
-logging.basicConfig(filename=os.path.join(path, "engine.log"), filemode="w", force=True)
+logging.basicConfig(
+    filename=os.path.join(path, "testbed.log"), filemode="w", force=True
+)
 
 if len(sys.argv) < 2:
     logging.error("Not enough arguments")
