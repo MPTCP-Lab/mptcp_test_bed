@@ -1,0 +1,78 @@
+[nodes]
+
+[nodes.r1]
+model = "router"
+
+[nodes.s1]
+model = "switch"
+
+[nodes.s2]
+model = "switch"
+
+[nodes.h1]
+model = "PC"
+
+[nodes.h2]
+model = "PC"
+
+[nodes.h3]
+model = "PC"
+
+[nodes.h5]
+model = "PC"
+
+[nodes.s3]
+model = "switch"
+
+[nodes.h6]
+model = "PC"
+
+[nodes.w1]
+model = "wlan"
+
+[nodes.h7]
+model = "PC"
+
+[links]
+
+[links.1]
+node1 = "r1"
+node2 = "s1"
+
+[links.2]
+node1 = "r1"
+node2 = "s2"
+
+[links.3]
+node1 = "s1"
+node2 = "h1"
+
+[links.4]
+node1 = "s1"
+node2 = "h2"
+
+[links.5]
+node1 = "s2"
+node2 = "h3"
+
+[links.6]
+node1 = "r1"
+node2 = "h5"
+
+[links.7]
+node1 = "s2"
+node2 = "s3"
+
+[links.8]
+node1 = "s3"
+node2 = "h6"
+
+[links.9]
+node1 = "s1"
+node2 = "w1"
+
+[links.10]
+node1 = "w1"
+node2 = "h7"
+
+[scripts]

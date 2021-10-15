@@ -1,0 +1,52 @@
+[nodes]
+
+  [nodes.host1]
+  posX = 200
+  posY = 200 
+  model = "PC"
+
+  [nodes.n1]
+  posX = 300
+  posY = 200
+  model = "router"
+
+  [nodes.n2]
+  posX = 400 
+  posY = 100
+  model = "router"
+
+  [nodes.n3]
+  posX = 400
+  posY = 500
+  model = "router"
+
+  [nodes.host2]
+  posX = 500 
+  posY = 200
+  model = "PC"
+
+[links]
+  
+  [links.1]
+  node1 = "host1"
+  node2 = "n1"
+
+  [links.2]
+  node1 = "n1"
+  node2 = "n2"
+
+  [links.3]
+  node1 = "n1"
+  node2 = "n3"
+
+  [links.4]
+  node1 = "n2"
+  node2 = "host2"
+
+  [links.5]
+  node1 = "n3" 
+  node2 = "host2" 
+
+[scripts]
+
+

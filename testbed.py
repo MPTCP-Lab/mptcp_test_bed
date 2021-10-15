@@ -11,7 +11,7 @@ from core.nodes.network import SwitchNode, WlanNode
 from core.location.mobility import BasicRangeModel
 
 # Parser related imports
-import yaml
+import toml
 import sys
 import os
 import re
@@ -29,8 +29,7 @@ if len(sys.argv) < 2:
 # Load YAML file
 filename = sys.argv[1]
 try:
-    with open(os.path.join(path, "topologies", filename)) as file_in:
-        data = yaml.load(file_in, Loader=yaml.FullLoader)
+    data = toml.load(os.path.join(path, "topologies", filename + ".toml"))
 except FileNotFoundError:
     logging.error("File not found '{}'".format(filename))
     exit(1)
@@ -44,12 +43,12 @@ session.set_state(EventTypes.CONFIGURATION_STATE)
 
 # Read nodes and add them to the session
 t_nodes = dict()
-for elem in data["nodes"]:
-
-    name = elem["name"]
-    posX = elem.get("posX", 100)
-    posY = elem.get("posY", 100)
-    model = elem.get("model", "router")
+for node in data["nodes"]:
+    params = data["nodes"][node]
+    name = node
+    posX = params.get("posX", 100)
+    posY = params.get("posY", 100)
+    model = params.get("model", "router")
 
     if model == "router" or model == "PC":
         options = NodeOptions(model=model, x=posX, y=posY, name=name)
@@ -64,11 +63,11 @@ for elem in data["nodes"]:
             obj.id,
             BasicRangeModel.name,
             {
-                "range": elem.get("range", None),
-                "bandwidth": elem.get("bandwidth", None),
-                "delay": elem.get("delay", None),
-                "jitter": elem.get("jitter", None),
-                "error": elem.get("error", None),
+                "range": params.get("range", None),
+                "bandwidth": params.get("bandwidth", None),
+                "delay": params.get("delay", None),
+                "jitter": params.get("jitter", None),
+                "error": params.get("error", None),
             },
         )
     else:
@@ -89,10 +88,12 @@ subnet_counter = 0
 switches_networks = {}
 switches_networks_counter = {}
 
+# Read links and add them to the session
 for link in data["links"]:
+    params = data["links"][link]
 
     [n1, n2] = sorted(
-        [link["node1"], link["node2"]],
+        [params["node1"], params["node2"]],
         key=lambda val: SORT_ORDER[t_nodes[val]["model"]],
     )
 
@@ -149,11 +150,11 @@ for link in data["links"]:
         logging.error("PC-to-PC connection")
         exit(1)
 
-    bandwidth = link.get("bandwidth", None)
-    delay = link.get("delay", None)
-    dup = link.get("dup", None)
-    loss = link.get("loss", None)
-    jitter = link.get("jitter", None)
+    bandwidth = params.get("bandwidth", None)
+    delay = params.get("delay", None)
+    dup = params.get("dup", None)
+    loss = params.get("loss", None)
+    jitter = params.get("jitter", None)
 
     options = LinkOptions(
         bandwidth=bandwidth, delay=delay, dup=dup, loss=loss, jitter=jitter
