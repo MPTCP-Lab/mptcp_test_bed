@@ -142,7 +142,9 @@ for link in data["links"]:
         )
 
         iface2 = InterfaceData(
-            ip4="{}.{}".format(switches_networks[n1], switches_networks_counter[n1]),
+            ip4="{}.{}".format(
+                switches_networks[n1], switches_networks_counter[n1]
+            ),
             ip4_mask=24,
         )
         switches_networks_counter[n1] += 1
@@ -165,9 +167,11 @@ for link in data["links"]:
     )
 
 
-# Configure routing
+# Configure routing and endpoints
 link_list = [
-    x for x in session.nodes.values() if isinstance(x, core.nodes.network.PtpNet)
+    x
+    for x in session.nodes.values()
+    if isinstance(x, core.nodes.network.PtpNet)
 ]
 
 gws = dict()
@@ -186,7 +190,9 @@ for link in link_list:
         gateway = str(iface2.get_ip4()).split("/")[0]
         pieces = re.split("[./]", str(iface1.get_ip4()))
         ip = "{}.{}.{}.{}".format(pieces[0], pieces[1], pieces[2], pieces[3])
-        subnet = "{}.{}.{}.{}/{}".format(pieces[0], pieces[1], pieces[2], 0, pieces[4])
+        subnet = "{}.{}.{}.{}/{}".format(
+            pieces[0], pieces[1], pieces[2], 0, pieces[4]
+        )
         table_count = gws[iface1.node.name]
         gws[iface1.node.name] += 1
 
@@ -202,7 +208,9 @@ for link in link_list:
             )
         )
         iface1.node.cmd(
-            "ip mptcp endpoint add {} dev {} subflow signal".format(ip, iface1.name)
+            "ip mptcp endpoint add {} dev {} subflow signal".format(
+                ip, iface1.name
+            )
         )
         # These limits should be configured in the future
         iface1.node.cmd("ip mptcp limits set subflows 8 add_addr_accepted 8")
