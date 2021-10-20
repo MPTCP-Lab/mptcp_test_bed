@@ -4,7 +4,7 @@
 # CoreEmu related imports
 import core
 from core.emulator.coreemu import CoreEmu
-from core.emulator.data import InterfaceData, NodeOptions, LinkOptions
+from core.emulator.data import NodeOptions, LinkOptions
 from core.emulator.enumerations import EventTypes
 from core.nodes.base import CoreNode
 from core.nodes.network import SwitchNode, WlanNode
@@ -12,12 +12,18 @@ from core.location.mobility import BasicRangeModel
 
 # Parser related imports
 import toml
-import sys
 import os
 import re
 import logging
+import sys
 
+# When runing a script from the GUI, we need to append the
+# path so we can find our custom modules
 path = os.path.dirname(sys.argv[0])
+sys.path.append(path)
+from auxs.subnets import SubNetManager  # noqa: E402
+
+# Init logging
 logging.basicConfig(
     filename=os.path.join(path, "testbed.log"), filemode="w", force=True
 )
@@ -71,7 +77,7 @@ for node in data["nodes"]:
             },
         )
     else:
-        logging.error("Unknown '{}' model".format(model))
+        logging.error("Configuration Error: Unknown '{}' model".format(model))
         exit(1)
 
     t_nodes[name] = {
@@ -81,76 +87,29 @@ for node in data["nodes"]:
         "model": model,
     }
 
-# Read links and add them to the session
-SORT_ORDER = {"router": 0, "switch": 1, "wlan": 2, "PC": 3}
-
-subnet_counter = 0
-switches_networks = {}
-switches_networks_counter = {}
+ip_manager_mapper = {}
 
 # Read links and add them to the session
 for link in data["links"]:
     params = data["links"][link]
 
-    [n1, n2] = sorted(
-        [params["node1"], params["node2"]],
-        key=lambda val: SORT_ORDER[t_nodes[val]["model"]],
-    )
+    n1, n2 = params["node1"], params["node2"]
+    n1_model, n2_model = t_nodes[n1]["model"], t_nodes[n2]["model"]
 
-    if t_nodes[n1]["model"] == "router":
-        iface1 = InterfaceData(
-            ip4="10.0.{}.1".format(subnet_counter),
-            ip4_mask=24,
-        )
+    if n1 in ip_manager_mapper:
+        ip_manager = ip_manager_mapper[n1]
+    elif n2 in ip_manager_mapper:
+        ip_manager = ip_manager_mapper[n2]
+    else:
+        ip_manager = SubNetManager.new_subnet()
 
-        if t_nodes[n2]["model"] == "switch" or t_nodes[n2]["model"] == "wlan":
-            switches_networks[n2] = "10.0.{}".format(subnet_counter)
-            switches_networks_counter[n2] = 20
-            iface2 = InterfaceData(
-                ip4_mask=24,
-            )
-        else:  # Host
-            iface2 = InterfaceData(
-                ip4="10.0.{}.20".format(subnet_counter),
-                ip4_mask=24,
-            )
-        subnet_counter += 1
+    if n1_model == "switch" or n1_model == "wlan":
+        ip_manager_mapper[n1] = ip_manager
+    if n2_model == "switch" or n2_model == "wlan":
+        ip_manager_mapper[n2] = ip_manager
 
-    elif t_nodes[n1]["model"] == "switch":
-        iface1 = InterfaceData(
-            ip4_mask=24,
-        )
-
-        if t_nodes[n2]["model"] == "switch" or t_nodes[n2]["model"] == "wlan":
-            switches_networks[n2] = switches_networks[n1]
-            switches_networks_counter[n2] = switches_networks_counter[n1]
-            iface2 = InterfaceData(
-                ip4_mask=24,
-            )
-        else:  # n2 Host
-            iface2 = InterfaceData(
-                ip4="{}.{}".format(
-                    switches_networks[n1], switches_networks_counter[n1]
-                ),
-                ip4_mask=24,
-            )
-            switches_networks_counter[n1] += 1
-    # Here we'll assume that wlan can only be conected to hosts
-    elif t_nodes[n1]["model"] == "wlan":
-        iface1 = InterfaceData(
-            ip4_mask=24,
-        )
-
-        iface2 = InterfaceData(
-            ip4="{}.{}".format(
-                switches_networks[n1], switches_networks_counter[n1]
-            ),
-            ip4_mask=24,
-        )
-        switches_networks_counter[n1] += 1
-    else:  # PC-to-PC ??
-        logging.error("PC-to-PC connection")
-        exit(1)
+    iface1 = ip_manager.new_interface(n1_model)
+    iface2 = ip_manager.new_interface(n2_model)
 
     bandwidth = params.get("bandwidth", None)
     delay = params.get("delay", None)
@@ -165,7 +124,6 @@ for link in data["links"]:
     session.add_link(
         t_nodes[n1]["obj"].id, t_nodes[n2]["obj"].id, iface1, iface2, options
     )
-
 
 # Configure routing and endpoints
 link_list = [
@@ -187,6 +145,7 @@ for link in link_list:
         if iface1.node.type == "router":
             iface1, iface2 = iface2, iface1
 
+        # Routing configuration
         gateway = str(iface2.get_ip4()).split("/")[0]
         pieces = re.split("[./]", str(iface1.get_ip4()))
         ip = "{}.{}.{}.{}".format(pieces[0], pieces[1], pieces[2], pieces[3])
@@ -207,6 +166,7 @@ for link in link_list:
                 gateway, iface1.name, table_count
             )
         )
+        # MPTCP kernel configuration
         iface1.node.cmd(
             "ip mptcp endpoint add {} dev {} subflow signal".format(
                 ip, iface1.name
@@ -215,10 +175,5 @@ for link in link_list:
         # These limits should be configured in the future
         iface1.node.cmd("ip mptcp limits set subflows 8 add_addr_accepted 8")
 
-for elem in t_nodes:
-    node = t_nodes[elem]
-    if "script" in node and node["script"]:
-        node["obj"].nodefilecopy("script.sh", node["script"])
-        node["obj"].cmd("bash script.sh")
-
+# Start session
 session.instantiate()
