@@ -129,7 +129,7 @@ for link in data["links"]:
 link_list = [
     x
     for x in session.nodes.values()
-    if isinstance(x, core.nodes.network.PtpNet)
+    if isinstance(x, core.nodes.network.PtpNet)  # type: ignore
 ]
 
 gws = dict()
