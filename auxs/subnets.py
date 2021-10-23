@@ -24,6 +24,12 @@ class IpManager:
         else:  # PC
             return InterfaceData(ip4=self._new_host_ip(), ip4_mask=24)
 
+    def gateway(self):
+        return "{}.1".format(self._subnetIp)
+
+    def subnet(self):
+        return "{}.0/24".format(self._subnetIp)
+
 
 # Class to manage subnets
 class SubNetManager:

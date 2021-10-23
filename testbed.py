@@ -2,7 +2,6 @@
 # -*- coding: utf-8 -*-
 
 # CoreEmu related imports
-import core
 from core.emulator.coreemu import CoreEmu
 from core.emulator.data import NodeOptions, LinkOptions
 from core.emulator.enumerations import EventTypes
@@ -13,7 +12,6 @@ from core.location.mobility import BasicRangeModel
 # Parser related imports
 import toml
 import os
-import re
 import logging
 import sys
 
@@ -88,6 +86,7 @@ for node in data["nodes"]:
     }
 
 ip_manager_mapper = {}
+gws = dict()
 
 # Read links and add them to the session
 for link in data["links"]:
@@ -121,39 +120,24 @@ for link in data["links"]:
         bandwidth=bandwidth, delay=delay, dup=dup, loss=loss, jitter=jitter
     )
 
-    session.add_link(
+    iface1, iface2 = session.add_link(
         t_nodes[n1]["obj"].id, t_nodes[n2]["obj"].id, iface1, iface2, options
     )
 
-# Configure routing and endpoints
-link_list = [
-    x
-    for x in session.nodes.values()
-    if isinstance(x, core.nodes.network.PtpNet)  # type: ignore
-]
+    # We do not consider PC-to-PC links
+    if (n1_model == "PC") ^ (n2_model == "PC"):
 
-gws = dict()
-for node in t_nodes:
-    gws[node] = 1
-
-for link in link_list:
-    iface1 = link.get_ifaces()[0]
-    iface2 = link.get_ifaces()[1]
-
-    if iface1.node.type == "PC" or iface2.node.type == "PC":
-
-        if iface1.node.type == "router":
+        if n2_model == "PC":
             iface1, iface2 = iface2, iface1
+            n1, n2 = n2, n1
 
         # Routing configuration
-        gateway = str(iface2.get_ip4()).split("/")[0]
-        pieces = re.split("[./]", str(iface1.get_ip4()))
-        ip = "{}.{}.{}.{}".format(pieces[0], pieces[1], pieces[2], pieces[3])
-        subnet = "{}.{}.{}.{}/{}".format(
-            pieces[0], pieces[1], pieces[2], 0, pieces[4]
-        )
-        table_count = gws[iface1.node.name]
-        gws[iface1.node.name] += 1
+        ip = str(iface1.get_ip4()).split("/")[0]
+        gateway = ip_manager.gateway()
+        subnet = ip_manager.subnet()
+
+        table_count = gws.get(n1, 1)
+        gws[n1] = table_count + 1
 
         iface1.node.cmd("ip rule add from {} table {}".format(ip, table_count))
         iface1.node.cmd(
