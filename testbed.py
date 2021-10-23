@@ -45,6 +45,9 @@ session = coreemu.create_session()
 # Set the topology to configuration mode
 session.set_state(EventTypes.CONFIGURATION_STATE)
 
+# Reset SubNetManager
+SubNetManager.new_topo()
+
 # Read nodes and add them to the session
 t_nodes = dict()
 for node in data["nodes"]:

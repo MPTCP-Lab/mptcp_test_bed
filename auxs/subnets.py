@@ -36,6 +36,10 @@ class SubNetManager:
     _counter = -1
 
     @staticmethod
+    def new_topo():
+        SubNetManager._counter = -1
+
+    @staticmethod
     def new_subnet():
         SubNetManager._counter += 1
         return IpManager("10.0.{}".format(SubNetManager._counter))
