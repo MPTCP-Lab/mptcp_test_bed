@@ -135,30 +135,55 @@ for link in data["links"]:
             n1, n2 = n2, n1
 
         # Routing configuration
-        ip = str(iface1.get_ip4()).split("/")[0]
-        gateway = ip_manager.gateway()
-        subnet = ip_manager.subnet()
+        ipv4 = str(iface1.get_ip4()).split("/")[0]
+        ipv6 = str(iface1.get_ip6()).split("/")[0]
+        gateway_ipv4, gateway_ipv6 = ip_manager.gateway()
+        subnet_ipv4, subnet_ipv6 = ip_manager.subnet()
 
         table_count = gws.get(n1, 1)
         gws[n1] = table_count + 1
 
-        iface1.node.cmd("ip rule add from {} table {}".format(ip, table_count))
+        iface1.node.cmd(
+            "ip rule add from {} table {}".format(ipv4, table_count)
+        )
+        iface1.node.cmd(
+            "ip -6 rule add from {} table {}".format(ipv6, table_count)
+        )
+
         iface1.node.cmd(
             "ip route add {} dev {} scope link table {}".format(
-                subnet, iface1.name, table_count
+                subnet_ipv4, iface1.name, table_count
             )
         )
         iface1.node.cmd(
-            "ip route add default via {} dev {} table {}".format(
-                gateway, iface1.name, table_count
+            "ip -6 route add {} dev {} scope link table {}".format(
+                subnet_ipv6, iface1.name, table_count
             )
         )
+
+        iface1.node.cmd(
+            "ip route add default via {} dev {} table {}".format(
+                gateway_ipv4, iface1.name, table_count
+            )
+        )
+        iface1.node.cmd(
+            "ip -6 route add default via {} dev {} table {}".format(
+                gateway_ipv6, iface1.name, table_count
+            )
+        )
+
         # MPTCP kernel configuration
         iface1.node.cmd(
             "ip mptcp endpoint add {} dev {} subflow signal".format(
-                ip, iface1.name
+                ipv4, iface1.name
             )
         )
+        iface1.node.cmd(
+            "ip mptcp endpoint add {} dev {} subflow signal".format(
+                ipv6, iface1.name
+            )
+        )
+
         # These limits should be configured in the future
         iface1.node.cmd("ip mptcp limits set subflows 8 add_addr_accepted 8")
 
