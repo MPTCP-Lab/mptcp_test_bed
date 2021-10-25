@@ -35,7 +35,7 @@ filename = sys.argv[1]
 try:
     data = toml.load(os.path.join(path, "topologies", filename + ".toml"))
 except FileNotFoundError:
-    logging.error("File not found '{}'".format(filename))
+    logging.error(f"File not found '{filename}'")
     exit(1)
 
 # Create the new core session
@@ -78,7 +78,7 @@ for node in data["nodes"]:
             },
         )
     else:
-        logging.error("Configuration Error: Unknown '{}' model".format(model))
+        logging.error(f"Configuration Error: Unknown '{model}' model")
         exit(1)
 
     t_nodes[name] = {
@@ -134,7 +134,8 @@ for link in data["links"]:
             iface1, iface2 = iface2, iface1
             n1, n2 = n2, n1
 
-        # Routing configuration
+        # Routing configuration as described in:
+        # http://multipath-tcp.org/pmwiki.php/Users/ConfigureRouting
         ipv4 = str(iface1.get_ip4()).split("/")[0]
         ipv6 = str(iface1.get_ip6()).split("/")[0]
         gateway_ipv4, gateway_ipv6 = ip_manager.gateway()
@@ -143,45 +144,29 @@ for link in data["links"]:
         table_count = gws.get(n1, 1)
         gws[n1] = table_count + 1
 
+        iface1.node.cmd(f"ip rule add from {ipv4} table {table_count}")
+        iface1.node.cmd(f"ip -6 rule add from {ipv6} table {table_count}")
+
         iface1.node.cmd(
-            "ip rule add from {} table {}".format(ipv4, table_count)
+            f"ip route add {subnet_ipv4} dev {iface1.name} scope link table {table_count}"
         )
         iface1.node.cmd(
-            "ip -6 rule add from {} table {}".format(ipv6, table_count)
+            f"ip -6 route add {subnet_ipv6} dev {iface1.name} scope link table {table_count}"
         )
 
         iface1.node.cmd(
-            "ip route add {} dev {} scope link table {}".format(
-                subnet_ipv4, iface1.name, table_count
-            )
+            f"ip route add default via {gateway_ipv4} dev {iface1.name} table {table_count}"
         )
         iface1.node.cmd(
-            "ip -6 route add {} dev {} scope link table {}".format(
-                subnet_ipv6, iface1.name, table_count
-            )
-        )
-
-        iface1.node.cmd(
-            "ip route add default via {} dev {} table {}".format(
-                gateway_ipv4, iface1.name, table_count
-            )
-        )
-        iface1.node.cmd(
-            "ip -6 route add default via {} dev {} table {}".format(
-                gateway_ipv6, iface1.name, table_count
-            )
+            f"ip -6 route add default via {gateway_ipv6} dev {iface1.name} table {table_count}"
         )
 
         # MPTCP kernel configuration
         iface1.node.cmd(
-            "ip mptcp endpoint add {} dev {} subflow signal".format(
-                ipv4, iface1.name
-            )
+            f"ip mptcp endpoint add {ipv4} dev {iface1.name} subflow signal"
         )
         iface1.node.cmd(
-            "ip mptcp endpoint add {} dev {} subflow signal".format(
-                ipv6, iface1.name
-            )
+            f"ip mptcp endpoint add {ipv6} dev {iface1.name} subflow signal"
         )
 
         # These limits should be configured in the future
