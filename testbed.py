@@ -137,8 +137,10 @@ for link in data["links"]:
         t_nodes[n1]["obj"].id, t_nodes[n2]["obj"].id, iface1, iface2, options
     )
 
+    use_mptcp = params.get("use_mptcp", True)
+
     # We do not consider PC-to-PC links
-    if (n1_model == "PC") ^ (n2_model == "PC"):
+    if ((n1_model == "PC") ^ (n2_model == "PC")) and use_mptcp:
 
         if n2_model == "PC":
             iface1, iface2 = iface2, iface1
