@@ -48,8 +48,13 @@ session.set_state(EventTypes.CONFIGURATION_STATE)
 # Reset SubNetManager
 SubNetManager.new_topo()
 
+# Auxs
+t_nodes = {}
+path_managers = {}
+gws = {}
+ip_manager_mapper = {}
+
 # Read nodes and add them to the session
-t_nodes = dict()
 for node in data["nodes"]:
     params = data["nodes"][node]
     name = node
@@ -57,7 +62,19 @@ for node in data["nodes"]:
     posY = params.get("posY", 100)
     model = params.get("model", "router")
 
-    if model == "router" or model == "PC":
+    if model == "PC":
+        options = NodeOptions(model=model, x=posX, y=posY, name=name)
+        obj = session.add_node(CoreNode, options=options)
+        path_manager = params.get("path_manager", "kernel")
+        path_managers[node] = path_manager
+
+        if path_manager == "kernel":
+            subflows = params.get("subflows", 8)
+            add_addr_accepted = params.get("add_addr_accepted", 8)
+            obj.cmd(
+                f"ip mptcp limits set subflows {subflows} add_addr_accepted {add_addr_accepted}"
+            )
+    elif model == "router":
         options = NodeOptions(model=model, x=posX, y=posY, name=name)
         obj = session.add_node(CoreNode, options=options)
     elif model == "switch":
@@ -81,20 +98,13 @@ for node in data["nodes"]:
         logging.error(f"Configuration Error: Unknown '{model}' model")
         exit(1)
 
-    t_nodes[name] = {
-        "obj": obj,
-        "posX": posX,
-        "posY": posY,
-        "model": model,
-    }
-
-ip_manager_mapper = {}
-gws = dict()
+    t_nodes[name] = {"obj": obj, "model": model, "params": params}
 
 # Read links and add them to the session
 for link in data["links"]:
     params = data["links"][link]
 
+    # TODO: We should check if these nodes exist
     n1, n2 = params["node1"], params["node2"]
     n1_model, n2_model = t_nodes[n1]["model"], t_nodes[n2]["model"]
 
@@ -162,15 +172,24 @@ for link in data["links"]:
         )
 
         # MPTCP kernel configuration
-        iface1.node.cmd(
-            f"ip mptcp endpoint add {ipv4} dev {iface1.name} subflow signal"
-        )
-        iface1.node.cmd(
-            f"ip mptcp endpoint add {ipv6} dev {iface1.name} subflow signal"
-        )
+        if path_managers[n1] == "kernel":
+            flags = params.get("ip_mptcp_flags", "subflow signal")
+            iface1.node.cmd(
+                f"ip mptcp endpoint add {ipv4} dev {iface1.name} {flags}"
+            )
+            iface1.node.cmd(
+                f"ip mptcp endpoint add {ipv6} dev {iface1.name} {flags}"
+            )
 
-        # These limits should be configured in the future
-        iface1.node.cmd("ip mptcp limits set subflows 8 add_addr_accepted 8")
+# We start mptcpd only after all links are configured
+for node in path_managers:
+    if path_managers[node] == "mptcpd":
+        addr_flags = t_nodes[node]["params"].get("addr_flags", "subflow,signal")
+        notify_flags = t_nodes[node]["params"].get("notify_flags", "existing")
+        t_nodes[node]["obj"].cmd(
+            f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags}",
+            wait=False,
+        )
 
 # Start session
 session.instantiate()
