@@ -188,8 +188,12 @@ for node in path_managers:
     if path_managers[node] == "mptcpd":
         addr_flags = t_nodes[node]["params"].get("addr_flags", "subflow,signal")
         notify_flags = t_nodes[node]["params"].get("notify_flags", "existing")
+        load_plugins = t_nodes[node]["params"].get("load_plugins", "")
+        if len(load_plugins) > 0:
+            load_plugins = f"--load-plugins={load_plugins}"
+
         t_nodes[node]["obj"].cmd(
-            f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags}",
+            f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags} {load_plugins}",
             wait=False,
         )
 
