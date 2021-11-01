@@ -65,10 +65,10 @@ for node in data["nodes"]:
     if model == "PC":
         options = NodeOptions(model=model, x=posX, y=posY, name=name)
         obj = session.add_node(CoreNode, options=options)
-        path_manager = params.get("path_manager", "kernel")
+        path_manager = params.get("path_manager", "ip_mptcp")
         path_managers[node] = path_manager
 
-        if path_manager == "kernel":
+        if path_manager == "ip_mptcp":
             subflows = params.get("subflows", 8)
             add_addr_accepted = params.get("add_addr_accepted", 8)
             obj.cmd(
@@ -173,8 +173,8 @@ for link in data["links"]:
             f"ip -6 route add default via {gateway_ipv6} dev {iface1.name} table {table_count}"
         )
 
-        # MPTCP kernel configuration
-        if path_managers[n1] == "kernel":
+        # MPTCP ip_mptcp configuration
+        if path_managers[n1] == "ip_mptcp":
             flags = params.get("ip_mptcp_flags", "subflow signal")
             iface1.node.cmd(
                 f"ip mptcp endpoint add {ipv4} dev {iface1.name} {flags}"
