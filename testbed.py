@@ -61,9 +61,12 @@ for node in data["nodes"]:
     posX = params.get("posX", 100)
     posY = params.get("posY", 100)
     model = params.get("model", "router")
+    services = params.get("services", [])
 
     if model == "PC":
-        options = NodeOptions(model=model, x=posX, y=posY, name=name)
+        options = NodeOptions(
+            model=model, x=posX, y=posY, name=name, services=services
+        )
         obj = session.add_node(CoreNode, options=options)
         path_manager = params.get("path_manager", "ip_mptcp")
         path_managers[node] = path_manager
@@ -75,13 +78,15 @@ for node in data["nodes"]:
                 f"ip mptcp limits set subflows {subflows} add_addr_accepted {add_addr_accepted}"
             )
     elif model == "router":
-        options = NodeOptions(model=model, x=posX, y=posY, name=name)
+        options = NodeOptions(
+            model=model, x=posX, y=posY, name=name, services=services
+        )
         obj = session.add_node(CoreNode, options=options)
     elif model == "switch":
-        options = NodeOptions(x=posX, y=posY, name=name)
+        options = NodeOptions(x=posX, y=posY, name=name, services=services)
         obj = session.add_node(SwitchNode, options=options)
     elif model == "wlan":
-        options = NodeOptions(x=posX, y=posY, name=name)
+        options = NodeOptions(x=posX, y=posY, name=name, services=services)
         obj = session.add_node(WlanNode, options=options)
         session.mobility.set_model_config(
             obj.id,

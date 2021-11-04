@@ -144,6 +144,11 @@ For nodes the following options are available:
   - Used when `model`="wlan"
   - Default=None (Uses CORE default)
 
+- `services`
+  - Services to run in this host
+  - Default=[] (Runs the default CORE services associated with the Node Model)
+  - **Note:** This option will **override all** the default services that CORE uses associated with a Node Model
+
 ---
 
 #### Link options
