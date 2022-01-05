@@ -194,11 +194,14 @@ for node in path_managers:
         addr_flags = t_nodes[node]["params"].get("addr_flags", "subflow,signal")
         notify_flags = t_nodes[node]["params"].get("notify_flags", "existing")
         load_plugins = t_nodes[node]["params"].get("load_plugins", "")
+        plugins_conf_dir = t_nodes[node]["params"].get("plugins_conf_dir", "")
         if len(load_plugins) > 0:
             load_plugins = f"--load-plugins={load_plugins}"
+        if len(plugins_conf_dir) > 0:
+            plugins_conf_dir = f"--plugins-conf-dir={plugins_conf_dir}"
 
         t_nodes[node]["obj"].cmd(
-            f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags} {load_plugins}",
+            f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags} {load_plugins} {plugins_conf_dir}",
             wait=False,
         )
 
