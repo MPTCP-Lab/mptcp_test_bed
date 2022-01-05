@@ -62,6 +62,7 @@ for node in data["nodes"]:
     posY = params.get("posY", 100)
     model = params.get("model", "router")
     services = params.get("services", [])
+    files = params.get("files", [])
 
     if model == "PC":
         options = NodeOptions(
@@ -102,6 +103,9 @@ for node in data["nodes"]:
     else:
         logging.error(f"Configuration Error: Unknown '{model}' model")
         exit(1)
+
+    for file in files:
+        obj.nodefilecopy(file, os.path.join(path, "files", file))
 
     t_nodes[name] = {"obj": obj, "model": model, "params": params}
 
