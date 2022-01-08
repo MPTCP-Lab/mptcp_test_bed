@@ -94,6 +94,11 @@ For nodes the following options are available:
   - Default="ip\_mptcp"
   - **Note:** When using `mptcpd`, make sure it's installed in your system
 
+- `files`
+  - List of files to be uploaded
+  - Default=[]
+  - **Note:** The target files must be in the `files` folder
+
 - `subflows`
   - Maximum number of additional subflows allowed for each MPTCP connection
   - Used when `path_manager`="ip\_mptcp"
@@ -118,6 +123,11 @@ For nodes the following options are available:
   - Plugins to load on startup
   - Used when `path_manager`=="mptcpd"
   - Default="" (Loads all plugins) 
+
+- `plugins_conf_dir`
+  - Plugins configuration path
+  - Used when `path_manager`=="mptcpd"
+  - **This option only works with this particular [version](https://github.com/dulive/mptcpd/tree/patched_version) of mptcpd**
   
 - `range`
   - Wlan range 
