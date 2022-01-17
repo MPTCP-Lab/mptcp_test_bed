@@ -14,7 +14,7 @@ This project aims to provide an easy to set up environment to test MPTCP in diff
 
 For path managing configuration it's possible to use `ip mptcp` or Intel's daemon [`mptcpd`](https://github.com/intel/mptcpd). As for routing rules, the configuration is conducted as described in [multipath-tcp.org](http://multipath-tcp.org/pmwiki.php/Users/ConfigureRouting).
 
-
+---
 
 ## How to Use
 
@@ -68,14 +68,9 @@ The topology configuration file uses TOML to describe the details of each node a
 
 ```
 
----
-
 ### Configuration Options
-For both nodes and links it's possible to specify different options in order to override default values.
 
 #### Node options
-
-For nodes the following options are available:
 
 | Option   | Description                                                                            | Default Value        |
 |----------|----------------------------------------------------------------------------------------|----------------------|
@@ -84,41 +79,50 @@ For nodes the following options are available:
 | posY     | Node position in the Y axis                                                            | 100                  |
 | files    | List of files to be copied to the node (The files must be contained in `files` folder) | [ ]                  |
 | services | Services to run on the node                                                            | [ ] (CORE's default) |
----
 
-- When **`model="PC"`**, the following suboptions are available:
 
-  | Option       | Description                                                      | Default Value |
-  |--------------|------------------------------------------------------------------|---------------|
-  | path_manager | The path manager to be used in this node ("ip\_mptcp", "mptcpd") | "ip\_mptcp"   |
+<ul>
 
-  ---
+<details>
+  <summary>When <b>model="PC"</b>, the following suboptions are available:</summary>
 
-  - When **`path_manager="ip_mptcp"`**, the following suboptions are available:
+  | Option        | Description                                                      | Default Value |
+  |---------------|------------------------------------------------------------------|---------------|
+  | path\_manager | The path manager to be used in this node ("ip\_mptcp", "mptcpd") | "ip\_mptcp"   |
 
-    | Option              | Description                                                                   | Default Value |
-    |---------------------|-------------------------------------------------------------------------------|---------------|
-    | subflows            | The maximum number of additional subflows allowed for each MPTCP connection   | 8             |
-    | add\_addr\_accepted | The maximum number of ADD\_ADDR suboptions accepted for each MPTCP connection | 8             |
-    
-    For more information about these flags see `man ip-mptcp`
+  <ul>
 
-  ---
+  <details>
+  <summary>When <b>path_manager="ip_mptcp"</b>, the following suboptions are available:</summary>
 
-  - When **`path_manager="mptcpd"`**, the following suboptions are available:
+  | Option              | Description                                                                   | Default Value |
+  |---------------------|-------------------------------------------------------------------------------|---------------|
+  | subflows            | The maximum number of additional subflows allowed for each MPTCP connection   | 8             |
+  | add\_addr\_accepted | The maximum number of ADD\_ADDR suboptions accepted for each MPTCP connection | 8             |
+  
+  For more information about these flags see `man ip-mptcp`
+  </details>
 
-    | Option             | Description                                                                                                                    | Default Value           |
-    |--------------------|--------------------------------------------------------------------------------------------------------------------------------|-------------------------|
-    | add\_flags         | Flags for announced adresses                                                                                                   | "subflow,signal"        |
-    | notify\_flags      | Address notification flags                                                                                                     | "existing"              |
-    | load\_plugins      | Plugins to load                                                                                                                | " " (Loads all plugins" |
-    | plugins\_conf\_dir | Plugins configuration path (Specific flag for this [`mptcpd version`](https://github.com/dulive/mptcpd/tree/patched_version))  | Default config path     |
 
-    For more information about these flags see [`mptcpd` documentation](https://github.com/intel/mptcpd)
+  <details>
+  <summary>When <b>path_manager="mptcpd"</b>, the following suboptions are available:</summary>
 
----
+  | Option             | Description                                                                                                                    | Default Value           |
+  |--------------------|--------------------------------------------------------------------------------------------------------------------------------|-------------------------|
+  | add\_flags         | Flags for announced adresses                                                                                                   | "subflow,signal"        |
+  | notify\_flags      | Address notification flags                                                                                                     | "existing"              |
+  | load\_plugins      | Plugins to load                                                                                                                | " " (Loads all plugins" |
+  | plugins\_conf\_dir | Plugins configuration path (Specific flag for this [`mptcpd version`](https://github.com/dulive/mptcpd/tree/patched_version))  | Default config path     |
 
-- When **`model="wlan"`**, the following suboptions are available:
+  For more information about these flags see [`mptcpd` documentation](https://github.com/intel/mptcpd)
+  </details>
+
+  </ul>
+
+</details>
+
+<details>
+  <summary>When <b>model="wlan"</b>, the following suboptions are available:</summary>
 
   | Option    | Description           | Default Value         |
   |-----------|-----------------------|-----------------------|
@@ -127,11 +131,11 @@ For nodes the following options are available:
   | delay     | Wlan delay            | None (CORE's default) |
   | jitter    | Wlan jitter           | None (CORE's default) |
   | error     | Wlan error percentage | None (CORE's default) |
+</details>
 
----
+</ul>
 
 #### Link options
-For links the following options are available:
 
 | Option           | Description                                                                                                          | Default Value         |
 |------------------|----------------------------------------------------------------------------------------------------------------------|-----------------------|
@@ -144,7 +148,4 @@ For links the following options are available:
 | jitter           | Link jitter                                                                                                          | None (CORE's default) |
 | use\_mptcp       | If this link should be considered to configure a MPTCP endpoint when connected to a "PC" node                        | true                  |
 | ip\_mptcp\_flags | Flags to use when configuring this link as a MPTCP endpoint using `ip_mptcp` (See `man ip-mptcp`)                    | "subflow signal"      |
-
-
-
 
