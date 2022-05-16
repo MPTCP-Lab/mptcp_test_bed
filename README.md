@@ -1,5 +1,7 @@
 # MPTCP Test Bed
 
+## NOTE: At the moment this project is only compatible with [CORE <7.5.2](https://github.com/coreemu/core). It will not work with newer releases!    
+
 ## Contents
 1. [Overview](#overview)
 2. [How to Use](#how-to-use)
