@@ -94,19 +94,6 @@ The topology configuration file uses TOML to describe the details of each node a
 
   <ul>
 
-  <details>
-  <summary>When <b>path_manager="ip_mptcp"</b>, the following suboptions are available:</summary>
-
-  | Option              | Description                                                                   | Default Value |
-  |---------------------|-------------------------------------------------------------------------------|---------------|
-  | subflows            | The maximum number of additional subflows allowed for each MPTCP connection   | 8             |
-  | add\_addr\_accepted | The maximum number of ADD\_ADDR suboptions accepted for each MPTCP connection | 8             |
-  
-  For more information about these flags see `man ip-mptcp`
-  </details>
-
-
-  <details>
   <summary>When <b>path_manager="mptcpd"</b>, the following suboptions are available:</summary>
 
   | Option             | Description                                                                                                                    | Default Value           |
@@ -149,5 +136,3 @@ The topology configuration file uses TOML to describe the details of each node a
 | loss             | Link loss percentage                                                                                                 | None (CORE's default) |
 | jitter           | Link jitter                                                                                                          | None (CORE's default) |
 | use\_mptcp       | If this link should be considered to configure a MPTCP endpoint when connected to a "PC" node                        | true                  |
-| ip\_mptcp\_flags | Flags to use when configuring this link as a MPTCP endpoint using `ip_mptcp` (See `man ip-mptcp`)                    | "subflow signal"      |
-
