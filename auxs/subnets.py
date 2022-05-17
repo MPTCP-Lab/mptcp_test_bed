@@ -35,9 +35,6 @@ class IpManager:
     def gateway(self):
         return f"{self._subnet_ipv4}.1", f"{self._subnet_ipv6}::1"
 
-    def subnet(self):
-        return f"{self._subnet_ipv4}.0/24", f"{self._subnet_ipv6}::0/64"
-
 
 # Class to manage subnets
 class SubNetManager:

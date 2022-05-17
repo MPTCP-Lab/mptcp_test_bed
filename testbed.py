@@ -51,6 +51,7 @@ SubNetManager.new_topo()
 # Auxs
 t_nodes = {}
 path_managers = {}
+interface_data = {}
 gws = {}
 ip_manager_mapper = {}
 
@@ -71,13 +72,6 @@ for node in data["nodes"]:
         obj = session.add_node(CoreNode, options=options)
         path_manager = params.get("path_manager", "ip_mptcp")
         path_managers[node] = path_manager
-
-        if path_manager == "ip_mptcp":
-            subflows = params.get("subflows", 8)
-            add_addr_accepted = params.get("add_addr_accepted", 8)
-            obj.cmd(
-                f"ip mptcp limits set subflows {subflows} add_addr_accepted {add_addr_accepted}"
-            )
     elif model == "router":
         options = NodeOptions(
             model=model, x=posX, y=posY, name=name, services=services
@@ -155,46 +149,38 @@ for link in data["links"]:
             iface1, iface2 = iface2, iface1
             n1, n2 = n2, n1
 
-        # Routing configuration as described in:
-        # http://multipath-tcp.org/pmwiki.php/Users/ConfigureRouting
-        ipv4 = str(iface1.get_ip4()).split("/")[0]
-        ipv6 = str(iface1.get_ip6()).split("/")[0]
-        gateway_ipv4, gateway_ipv6 = ip_manager.gateway()
-        subnet_ipv4, subnet_ipv6 = ip_manager.subnet()
+        gateway_ipv4, _ = ip_manager.gateway()
 
-        table_count = gws.get(n1, 1)
-        gws[n1] = table_count + 1
+        if n1 not in interface_data:
+            interface_data[n1] = []
 
-        iface1.node.cmd(f"ip rule add from {ipv4} table {table_count}")
-        iface1.node.cmd(f"ip -6 rule add from {ipv6} table {table_count}")
-
-        iface1.node.cmd(
-            f"ip route add {subnet_ipv4} dev {iface1.name} scope link table {table_count}"
-        )
-        iface1.node.cmd(
-            f"ip -6 route add {subnet_ipv6} dev {iface1.name} scope link table {table_count}"
+        interface_data[n1].append(
+            {
+                "name": iface1.name,
+                "gateway_ipv4": gateway_ipv4,
+            }
         )
 
-        iface1.node.cmd(
-            f"ip route add default via {gateway_ipv4} dev {iface1.name} table {table_count}"
+        # Copy configurator to target
+        iface1.node.nodefilecopy(
+            "configurator.sh",
+            os.path.join(path, "files", "configurator.sh"),
         )
-        iface1.node.cmd(
-            f"ip -6 route add default via {gateway_ipv6} dev {iface1.name} table {table_count}"
-        )
-
-        # MPTCP ip_mptcp configuration
-        if path_managers[n1] == "ip_mptcp":
-            flags = params.get("ip_mptcp_flags", "subflow signal")
-            iface1.node.cmd(
-                f"ip mptcp endpoint add {ipv4} dev {iface1.name} {flags}"
-            )
-            iface1.node.cmd(
-                f"ip mptcp endpoint add {ipv6} dev {iface1.name} {flags}"
-            )
 
 # We start mptcpd only after all links are configured
 for node in path_managers:
-    if path_managers[node] == "mptcpd":
+    if path_managers[node] == "ip_mptcp":
+        args = ""
+        for interface in interface_data[node]:
+            args += " " + interface["name"] + " " + interface["gateway_ipv4"]
+        t_nodes[node]["obj"].cmd(f"./configurator.sh -p ip_mptcp{args}")
+
+    elif path_managers[node] == "mptcpd":
+        args = ""
+        for interface in interface_data[node]:
+            args += " " + interface["name"] + " " + interface["gateway_ipv4"]
+        t_nodes[node]["obj"].cmd(f"./configurator.sh{args}")
+
         addr_flags = t_nodes[node]["params"].get("addr_flags", "subflow,signal")
         notify_flags = t_nodes[node]["params"].get("notify_flags", "existing")
         load_plugins = t_nodes[node]["params"].get("load_plugins", "")
