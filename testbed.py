@@ -1,115 +1,109 @@
-#!/usr/bin/env python
-# -*- coding: utf-8 -*-
+#!/usr/bin/env python3
 
-# CoreEmu related imports
-from core.emulator.coreemu import CoreEmu
-from core.emulator.data import NodeOptions, LinkOptions
-from core.emulator.enumerations import EventTypes
-from core.nodes.base import CoreNode
-from core.nodes.network import SwitchNode, WlanNode
-from core.location.mobility import BasicRangeModel
-
-# Parser related imports
 import toml
-import os
-import logging
 import sys
+import os
 
-# When runing a script from the GUI, we need to append the
-# path so we can find our custom modules
-path = os.path.dirname(sys.argv[0])
-sys.path.append(path)
-from auxs.subnets import SubNetManager  # noqa: E402
-
-# Init logging
-logging.basicConfig(
-    filename=os.path.join(path, "testbed.log"), filemode="w", force=True
-)
+from core.api.grpc import client
+from core.api.grpc.wrappers import Position, NodeType, LinkOptions
+from auxs.auxs import SubNetManager, NodeAux, InterfaceData
 
 if len(sys.argv) < 2:
-    logging.error("Not enough arguments")
+    print("Not enough arguments")
     exit(1)
 
 # Load YAML file
 filename = sys.argv[1]
+dir_path = os.path.abspath(os.path.dirname(__file__))
+topo_path = os.path.join(dir_path, "topologies", filename + ".toml")
+
 try:
-    data = toml.load(os.path.join(path, "topologies", filename + ".toml"))
+    data = toml.load(topo_path)
 except FileNotFoundError:
-    logging.error(f"File not found '{filename}'")
+    print(f"File not found: {topo_path}")
     exit(1)
 
-# Create the new core session
-coreemu = globals().get("coreemu", CoreEmu())
-session = coreemu.create_session()
+# create grpc client and connect
+core = client.CoreGrpcClient()
+core.connect()
 
-# Set the topology to configuration mode
-session.set_state(EventTypes.CONFIGURATION_STATE)
+# add session
+session = core.create_session()
 
 # Reset SubNetManager
 SubNetManager.new_topo()
 
-# Auxs
-t_nodes = {}
-path_managers = {}
-interface_data = {}
-gws = {}
-ip_manager_mapper = {}
+###############
+#### NODES ####
+###############
+node_id = 1
+nodes = {}
 
-# Read nodes and add them to the session
 for node in data["nodes"]:
     params = data["nodes"][node]
-    name = node
     posX = params.get("posX", 100)
     posY = params.get("posY", 100)
+    position = Position(x=posX, y=posY)
     model = params.get("model", "router")
     services = params.get("services", [])
     files = params.get("files", [])
 
     if model == "PC":
-        options = NodeOptions(
-            model=model, x=posX, y=posY, name=name, services=services
+        obj = session.add_node(
+            node_id, name=node, model="PC", position=position
         )
-        obj = session.add_node(CoreNode, options=options)
-        path_manager = params.get("path_manager", "ip_mptcp")
-        path_managers[node] = path_manager
+        files.append("configurator.sh")
     elif model == "router":
-        options = NodeOptions(
-            model=model, x=posX, y=posY, name=name, services=services
+        obj = session.add_node(
+            node_id, name=node, model="router", position=position
         )
-        obj = session.add_node(CoreNode, options=options)
     elif model == "switch":
-        options = NodeOptions(x=posX, y=posY, name=name, services=services)
-        obj = session.add_node(SwitchNode, options=options)
+        obj = session.add_node(
+            node_id,
+            name=node,
+            _type=NodeType.SWITCH,
+            position=position,
+        )
     elif model == "wlan":
-        options = NodeOptions(x=posX, y=posY, name=name, services=services)
-        obj = session.add_node(WlanNode, options=options)
-        session.mobility.set_model_config(
-            obj.id,
-            BasicRangeModel.name,
+        obj = session.add_node(
+            node_id,
+            name=node,
+            _type=NodeType.WIRELESS_LAN,
+            position=position,
+        )
+        obj.set_wlan(
             {
                 "range": params.get("range", None),
                 "bandwidth": params.get("bandwidth", None),
                 "delay": params.get("delay", None),
                 "jitter": params.get("jitter", None),
                 "error": params.get("error", None),
-            },
+            }
         )
     else:
-        logging.error(f"Configuration Error: Unknown '{model}' model")
+        print(f"Unknown model {model}")
         exit(1)
 
-    for file in files:
-        obj.nodefilecopy(file, os.path.join(path, "files", file))
+    obj.config_services = services
+    nodes[node] = NodeAux(obj, files, params, [])
+    node_id += 1
 
-    t_nodes[name] = {"obj": obj, "model": model, "params": params}
+###############
+#### LINKS ####
+###############
+ip_manager_mapper = {}
 
-# Read links and add them to the session
 for link in data["links"]:
     params = data["links"][link]
-
-    # TODO: We should check if these nodes exist
     n1, n2 = params["node1"], params["node2"]
-    n1_model, n2_model = t_nodes[n1]["model"], t_nodes[n2]["model"]
+
+    options = LinkOptions(
+        bandwidth=params.get("bandwidth", None),
+        delay=params.get("delay", None),
+        dup=params.get("dup", None),
+        loss=params.get("loss", None),
+        jitter=params.get("jitter", None),
+    )
 
     if n1 in ip_manager_mapper:
         ip_manager = ip_manager_mapper[n1]
@@ -118,82 +112,86 @@ for link in data["links"]:
     else:
         ip_manager = SubNetManager.new_subnet()
 
-    if n1_model == "switch" or n1_model == "wlan":
+    if nodes[n1].obj.model == "switch" or nodes[n1].obj.model == "wlan":
         ip_manager_mapper[n1] = ip_manager
-    if n2_model == "switch" or n2_model == "wlan":
+    if nodes[n2].obj.model == "switch" or nodes[n2].obj.model == "wlan":
         ip_manager_mapper[n2] = ip_manager
 
-    iface1 = ip_manager.new_interface(n1_model)
-    iface2 = ip_manager.new_interface(n2_model)
+    iface1 = ip_manager.new_interface(nodes[n1].obj)
+    iface2 = ip_manager.new_interface(nodes[n2].obj)
 
-    bandwidth = params.get("bandwidth", None)
-    delay = params.get("delay", None)
-    dup = params.get("dup", None)
-    loss = params.get("loss", None)
-    jitter = params.get("jitter", None)
-
-    options = LinkOptions(
-        bandwidth=bandwidth, delay=delay, dup=dup, loss=loss, jitter=jitter
-    )
-
-    iface1, iface2 = session.add_link(
-        t_nodes[n1]["obj"].id, t_nodes[n2]["obj"].id, iface1, iface2, options
+    session.add_link(
+        node1=nodes[n1].obj,
+        node2=nodes[n2].obj,
+        iface1=iface1,
+        iface2=iface2,
+        options=options,
     )
 
     use_mptcp = params.get("use_mptcp", True)
 
     # We do not consider PC-to-PC links
-    if ((n1_model == "PC") ^ (n2_model == "PC")) and use_mptcp:
+    if (
+        (nodes[n1].obj.model == "PC") ^ (nodes[n2].obj.model == "PC")
+    ) and use_mptcp:
 
-        if n2_model == "PC":
+        if nodes[n2].obj.model == "PC":
             iface1, iface2 = iface2, iface1
             n1, n2 = n2, n1
 
         gateway_ipv4, _ = ip_manager.gateway()
+        nodes[n1].interfaces.append(InterfaceData(iface1.name, gateway_ipv4))
 
-        if n1 not in interface_data:
-            interface_data[n1] = []
+# start session
+core.start_session(session)
 
-        interface_data[n1].append(
-            {
-                "name": iface1.name,
-                "gateway_ipv4": gateway_ipv4,
-            }
+# Copy files
+for node in nodes:
+    for file in nodes[node].files:
+        core.node_command(
+            session_id=session.id,
+            node_id=nodes[node].obj.id,
+            command=f"cp {dir_path}/files/{file} .",
+            shell=True,
         )
 
-        # Copy configurator to target
-        iface1.node.nodefilecopy(
-            "configurator.sh",
-            os.path.join(path, "files", "configurator.sh"),
-        )
-
-# We start mptcpd only after all links are configured
-for node in path_managers:
-    if path_managers[node] == "ip_mptcp":
+# MPTCP configurations
+for node in nodes:
+    nodeAux = nodes[node]
+    if nodeAux.obj.model == "PC":
+        path_manager = nodeAux.params.get("path_manager", "ip_mptcp")
         args = ""
-        for interface in interface_data[node]:
-            args += " " + interface["name"] + " " + interface["gateway_ipv4"]
-        t_nodes[node]["obj"].cmd(f"./configurator.sh -p ip_mptcp{args}")
+        for interface in nodeAux.interfaces:
+            args += " " + interface.name + " " + interface.gateway_ipv4
+        if path_manager == "ip_mptcp":
+            core.node_command(
+                session_id=session.id,
+                node_id=nodeAux.obj.id,
+                command=f"./configurator.sh -p ip_mptcp{args}",
+                shell=True,
+            )
+        elif path_manager == "mptcpd":
+            core.node_command(
+                session_id=session.id,
+                node_id=nodeAux.obj.id,
+                command=f"./configurator.sh{args}",
+                shell=True,
+            )
 
-    elif path_managers[node] == "mptcpd":
-        args = ""
-        for interface in interface_data[node]:
-            args += " " + interface["name"] + " " + interface["gateway_ipv4"]
-        t_nodes[node]["obj"].cmd(f"./configurator.sh{args}")
+            addr_flags = nodeAux.params.get("addr_flags", "subflow,signal")
+            notify_flags = nodeAux.params.get("notify_flags", "existing")
+            load_plugins = nodeAux.params.get("load_plugins", "")
+            plugins_conf_dir = nodeAux.params.get("plugins_conf_dir", "")
 
-        addr_flags = t_nodes[node]["params"].get("addr_flags", "subflow,signal")
-        notify_flags = t_nodes[node]["params"].get("notify_flags", "existing")
-        load_plugins = t_nodes[node]["params"].get("load_plugins", "")
-        plugins_conf_dir = t_nodes[node]["params"].get("plugins_conf_dir", "")
-        if len(load_plugins) > 0:
-            load_plugins = f"--load-plugins={load_plugins}"
-        if len(plugins_conf_dir) > 0:
-            plugins_conf_dir = f"--plugins-conf-dir={plugins_conf_dir}"
+            if len(load_plugins) > 0:
+                load_plugins = f"--load-plugins={load_plugins}"
+            if len(plugins_conf_dir) > 0:
+                plugins_conf_dir = f"--plugins-conf-dir={plugins_conf_dir}"
 
-        t_nodes[node]["obj"].cmd(
-            f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags} {load_plugins} {plugins_conf_dir}",
-            wait=False,
-        )
-
-# Start session
-session.instantiate()
+            core.node_command(
+                session_id=session.id,
+                node_id=nodeAux.obj.id,
+                command=f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags} {load_plugins} {plugins_conf_dir}",
+                shell=True,
+                wait=False,
+            )
