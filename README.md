@@ -1,7 +1,5 @@
 # MPTCP Test Bed
 
-## NOTE: At the moment this project is only compatible with [CORE <7.5.2](https://github.com/coreemu/core). It will not work with newer releases!    
-
 ## Contents
 1. [Overview](#overview)
 2. [How to Use](#how-to-use)
@@ -20,17 +18,9 @@ For path managing configuration it's possible to use `ip mptcp` or Intel's daemo
 
 ## How to Use
 
-**Note:** These steps have only been validated in the Classic CORE GUI
-
 1. Create your topology and add it to the `topologies` folder
-2. Open the CORE GUI
-3. File > Execute Python script with options
-4. Select `testbed.py`
-5. Click `Open`
-6. Append the name of your topology **(without file extension)** 
-7. Click `OK` 
-
-If the session does not start after a few seconds, check the `testbed.log` for errors
+2. Run the script with the topology argument (no file extension): `python3 testbed.py <topology>`
+3. Connect to the new created session in the CORE GUI
 
 ---
 
