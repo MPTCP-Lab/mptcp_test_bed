@@ -1,6 +1,6 @@
 from typing import List
 from dataclasses import dataclass
-from core.api.grpc.wrappers import Interface, Node
+from core.api.grpc.wrappers import Interface, Node, NodeType
 
 
 # Class to manage ips in a subnet
@@ -76,3 +76,19 @@ class NodeAux:
     files: List[str]
     params: dict
     interfaces: List[InterfaceData]
+
+
+def is_switch(node):
+    return node.type == NodeType.SWITCH
+
+
+def is_pc(node):
+    return node.type == NodeType.DEFAULT and node.model == "PC"
+
+
+def is_router(node):
+    return node.type == NodeType.DEFAULT and node.model == "router"
+
+
+def is_wlan(node):
+    return node.type == NodeType.WIRELESS_LAN

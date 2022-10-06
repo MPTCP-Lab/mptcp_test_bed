@@ -6,7 +6,14 @@ import os
 
 from core.api.grpc import client
 from core.api.grpc.wrappers import Position, NodeType, LinkOptions
-from auxs.auxs import SubNetManager, NodeAux, InterfaceData
+from auxs.auxs import (
+    SubNetManager,
+    NodeAux,
+    InterfaceData,
+    is_switch,
+    is_pc,
+    is_wlan,
+)
 
 if len(sys.argv) < 2:
     print("Not enough arguments")
@@ -110,9 +117,9 @@ for link in data["links"].values():
     else:
         ip_manager = SubNetManager.new_subnet()
 
-    if nodes[n1].obj.model == "switch" or nodes[n1].obj.model == "wlan":
+    if is_switch(nodes[n1].obj) or is_wlan(nodes[n1].obj):
         ip_manager_mapper[n1] = ip_manager
-    if nodes[n2].obj.model == "switch" or nodes[n2].obj.model == "wlan":
+    if is_switch(nodes[n2].obj) or is_wlan(nodes[n2].obj):
         ip_manager_mapper[n2] = ip_manager
 
     iface1 = ip_manager.new_interface(nodes[n1].obj)
@@ -129,11 +136,8 @@ for link in data["links"].values():
     use_mptcp = link.get("use_mptcp", True)
 
     # We do not consider PC-to-PC links
-    if (
-        (nodes[n1].obj.model == "PC") ^ (nodes[n2].obj.model == "PC")
-    ) and use_mptcp:
-
-        if nodes[n2].obj.model == "PC":
+    if (is_pc(nodes[n1].obj) ^ is_pc(nodes[n2].obj)) and use_mptcp:
+        if is_pc(nodes[n2].obj):
             iface1, iface2 = iface2, iface1
             n1, n2 = n2, n1
 
@@ -155,7 +159,7 @@ for node in nodes.values():
 
 # MPTCP configurations
 for node in nodes.values():
-    if node.obj.model == "PC":
+    if is_pc(node.obj):
         path_manager = node.params.get("path_manager", "ip_mptcp")
         args = ""
         for interface in node.interfaces:
