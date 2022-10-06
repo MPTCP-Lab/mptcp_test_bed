@@ -39,8 +39,7 @@ SubNetManager.new_topo()
 node_id = 1
 nodes = {}
 
-for node in data["nodes"]:
-    params = data["nodes"][node]
+for node, params in data["nodes"].items():
     posX = params.get("posX", 100)
     posY = params.get("posY", 100)
     position = Position(x=posX, y=posY)
@@ -93,16 +92,15 @@ for node in data["nodes"]:
 ###############
 ip_manager_mapper = {}
 
-for link in data["links"]:
-    params = data["links"][link]
-    n1, n2 = params["node1"], params["node2"]
+for link in data["links"].values():
+    n1, n2 = link["node1"], link["node2"]
 
     options = LinkOptions(
-        bandwidth=params.get("bandwidth", None),
-        delay=params.get("delay", None),
-        dup=params.get("dup", None),
-        loss=params.get("loss", None),
-        jitter=params.get("jitter", None),
+        bandwidth=link.get("bandwidth", None),
+        delay=link.get("delay", None),
+        dup=link.get("dup", None),
+        loss=link.get("loss", None),
+        jitter=link.get("jitter", None),
     )
 
     if n1 in ip_manager_mapper:
@@ -128,7 +126,7 @@ for link in data["links"]:
         options=options,
     )
 
-    use_mptcp = params.get("use_mptcp", True)
+    use_mptcp = link.get("use_mptcp", True)
 
     # We do not consider PC-to-PC links
     if (
@@ -146,42 +144,41 @@ for link in data["links"]:
 core.start_session(session)
 
 # Copy files
-for node in nodes:
-    for file in nodes[node].files:
+for node in nodes.values():
+    for file in node.files:
         core.node_command(
             session_id=session.id,
-            node_id=nodes[node].obj.id,
+            node_id=node.obj.id,
             command=f"cp {dir_path}/files/{file} .",
             shell=True,
         )
 
 # MPTCP configurations
-for node in nodes:
-    nodeAux = nodes[node]
-    if nodeAux.obj.model == "PC":
-        path_manager = nodeAux.params.get("path_manager", "ip_mptcp")
+for node in nodes.values():
+    if node.obj.model == "PC":
+        path_manager = node.params.get("path_manager", "ip_mptcp")
         args = ""
-        for interface in nodeAux.interfaces:
+        for interface in node.interfaces:
             args += " " + interface.name + " " + interface.gateway_ipv4
         if path_manager == "ip_mptcp":
             core.node_command(
                 session_id=session.id,
-                node_id=nodeAux.obj.id,
+                node_id=node.obj.id,
                 command=f"./configurator.sh -p ip_mptcp{args}",
                 shell=True,
             )
         elif path_manager == "mptcpd":
             core.node_command(
                 session_id=session.id,
-                node_id=nodeAux.obj.id,
+                node_id=node.obj.id,
                 command=f"./configurator.sh{args}",
                 shell=True,
             )
 
-            addr_flags = nodeAux.params.get("addr_flags", "subflow,signal")
-            notify_flags = nodeAux.params.get("notify_flags", "existing")
-            load_plugins = nodeAux.params.get("load_plugins", "")
-            plugins_conf_dir = nodeAux.params.get("plugins_conf_dir", "")
+            addr_flags = node.params.get("addr_flags", "subflow,signal")
+            notify_flags = node.params.get("notify_flags", "existing")
+            load_plugins = node.params.get("load_plugins", "")
+            plugins_conf_dir = node.params.get("plugins_conf_dir", "")
 
             if len(load_plugins) > 0:
                 load_plugins = f"--load-plugins={load_plugins}"
@@ -190,7 +187,7 @@ for node in nodes:
 
             core.node_command(
                 session_id=session.id,
-                node_id=nodeAux.obj.id,
+                node_id=node.obj.id,
                 command=f"mptcpd --addr-flags={addr_flags} --notify-flags={notify_flags} {load_plugins} {plugins_conf_dir}",
                 shell=True,
                 wait=False,
