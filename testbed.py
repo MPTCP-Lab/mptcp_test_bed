@@ -20,12 +20,13 @@ if len(sys.argv) < 2:
     exit(1)
 
 # Load YAML file
-filename = sys.argv[1]
+topology = sys.argv[1]
 dir_path = os.path.abspath(os.path.dirname(__file__))
-topo_path = os.path.join(dir_path, "topologies", filename + ".toml")
+topo_path = os.path.join(dir_path, "topologies", topology)
 
 try:
-    data = toml.load(topo_path)
+    nodes_file = toml.load(os.path.join(topo_path, "nodes.toml"))
+    links_file = toml.load(os.path.join(topo_path, "links.toml"))
 except FileNotFoundError:
     print(f"File not found: {topo_path}")
     exit(1)
@@ -46,7 +47,7 @@ SubNetManager.new_topo()
 node_id = 1
 nodes = {}
 
-for node, params in data["nodes"].items():
+for node, params in nodes_file.items():
     posX = params.get("posX", 100)
     posY = params.get("posY", 100)
     position = Position(x=posX, y=posY)
@@ -99,8 +100,8 @@ for node, params in data["nodes"].items():
 ###############
 ip_manager_mapper = {}
 
-for link in data["links"].values():
-    n1, n2 = link["node1"], link["node2"]
+for link in links_file.values():
+    n1, n2 = link["edges"]
 
     options = LinkOptions(
         bandwidth=link.get("bandwidth", None),

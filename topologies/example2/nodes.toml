@@ -1,0 +1,24 @@
+[host1]
+posX = 200
+posY = 200
+model = "PC"
+
+[n1]
+posX = 300
+posY = 200
+model = "router"
+
+[n2]
+posX = 400
+posY = 100
+model = "router"
+
+[suricata]
+posX = 500
+posY = 200
+model = "router"
+
+[host2]
+posX = 500
+posY = 200
+model = "PC"

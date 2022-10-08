@@ -1,0 +1,14 @@
+[l1]
+edges = ["host1", "n1"]
+
+[l2]
+edges = ["host1", "n2"]
+
+[l3]
+edges = ["n1", "suricata"]
+
+[l4]
+edges = ["n2", "suricata"]
+
+[l5]
+edges = ["suricata", "host2"]

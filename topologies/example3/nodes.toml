@@ -1,0 +1,32 @@
+[r1]
+model = "router"
+
+[s1]
+model = "switch"
+
+[s2]
+model = "switch"
+
+[h1]
+model = "PC"
+
+[h2]
+model = "PC"
+
+[h3]
+model = "PC"
+
+[h5]
+model = "PC"
+
+[s3]
+model = "switch"
+
+[h6]
+model = "PC"
+
+[w1]
+model = "wlan"
+
+[h7]
+model = "PC"
