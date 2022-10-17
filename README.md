@@ -26,39 +26,34 @@ For path managing configuration it's possible to use `ip mptcp` or Intel's daemo
 
 ## Configuration
 
-### Topology Configuration File
-The topology configuration file uses TOML to describe the details of each node and link. The file should be organized in sections, as the following example:
+### Topology Configuration Files
+Each topology consists of two configuration files:
 
-```TOML
-[nodes]
+`nodes.toml`:
 
-  [nodes.<node_name1>]
-  posX = 500 
-  posY = 200
-  model = "PC"
+```toml
+[<node1>]
+model = "PC"
 
-  [nodes.<node_name2>]
-  model = "router"
+[<node2>]
+model = "router"
 
-  [nodes.<node_name3>]
-
-  # ...
-  # ...
-
-[links]
-
-  [links.1]
-  node1 = "<node_name1>"
-  node2 = "<node_name2>"
-  
-  [links.2]
-  node1 = "<node_name2>"
-  node2 = "<node_name3>"
-
-  # ...
-  # ...  
-
+# ...
 ```
+
+`links.toml`:
+
+```toml 
+[<link1>]
+edges = ["<node1>", "<node2>"]
+
+[<link2>]
+edges = ["<node3>", "<node4>"]
+
+# ...
+```
+
+See [examples](/topologies) for more details.
 
 ### Configuration Options
 
@@ -67,8 +62,6 @@ The topology configuration file uses TOML to describe the details of each node a
 | Option   | Description                                                                            | Default Value        |
 |----------|----------------------------------------------------------------------------------------|----------------------|
 | model    | The node type ("PC", "router", "switch")                                               | "router"             |
-| posX     | Node position in the X axis                                                            | 100                  |
-| posY     | Node position in the Y axis                                                            | 100                  |
 | files    | List of files to be copied to the node (The files must be contained in `files` folder) | [ ]                  |
 | services | Services to run on the node                                                            | [ ] (CORE's default) |
 
