@@ -1,0 +1,29 @@
+[l1]
+edges = ["r1", "s1"]
+
+[l2]
+edges = ["r1", "s2"]
+
+[l3]
+edges = ["s1", "h1"]
+
+[l4]
+edges = ["s1", "h2"]
+
+[l5]
+edges = ["s2", "h3"]
+
+[l6]
+edges = ["r1", "h5"]
+
+[l7]
+edges = ["s2", "s3"]
+
+[l8]
+edges = ["s3", "h6"]
+
+[l9]
+edges = ["s1", "w1"]
+
+[l10]
+edges = ["s1", "h7"]
