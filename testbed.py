@@ -3,6 +3,7 @@
 import toml
 import sys
 import os
+import networkx as nx
 
 from core.api.grpc import client
 from core.api.grpc.wrappers import Position, NodeType, LinkOptions
@@ -14,6 +15,10 @@ from auxs.auxs import (
     is_pc,
     is_wlan,
 )
+
+# Default canvas size is (1000, 750)
+WIDTH = 475
+HEIGHT = 350
 
 if len(sys.argv) < 2:
     print("Not enough arguments")
@@ -41,6 +46,8 @@ session = core.create_session()
 # Reset SubNetManager
 SubNetManager.new_topo()
 
+G = nx.Graph()
+
 ###############
 #### NODES ####
 ###############
@@ -48,9 +55,7 @@ node_id = 1
 nodes = {}
 
 for node, params in nodes_file.items():
-    posX = params.get("posX", 100)
-    posY = params.get("posY", 100)
-    position = Position(x=posX, y=posY)
+    position = Position(x=0, y=0)
     model = params.get("model", "router")
     services = params.get("services", [])
     files = params.get("files", [])
@@ -94,6 +99,7 @@ for node, params in nodes_file.items():
     obj.config_services = services
     nodes[node] = NodeAux(obj, files, params, [])
     node_id += 1
+    G.add_node(node)
 
 ###############
 #### LINKS ####
@@ -145,8 +151,22 @@ for link in links_file.values():
         gateway_ipv4, _ = ip_manager.gateway()
         nodes[n1].interfaces.append(InterfaceData(iface1.name, gateway_ipv4))
 
+    G.add_edge(n1, n2)
+
 # start session
 core.start_session(session)
+
+# Position nodes using Kamada Kawai layout
+pos = nx.kamada_kawai_layout(G)
+for node in nodes:
+    x = max(pos[node][0] * WIDTH + WIDTH, 50)
+    y = max(pos[node][1] * HEIGHT + HEIGHT, 50)
+    position = Position(x, y)
+    core.move_node(
+        session_id=session.id,
+        node_id=nodes[node].obj.id,
+        position=position,
+    )
 
 # Copy files
 for node in nodes.values():
