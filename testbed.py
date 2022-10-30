@@ -46,15 +46,12 @@ session = core.create_session()
 # Reset SubNetManager
 SubNetManager.new_topo()
 
-G = nx.Graph()
-
 ###############
 #### NODES ####
 ###############
-node_id = 1
 nodes = {}
 
-for node, params in nodes_file.items():
+for node_id, [node, params] in enumerate(nodes_file.items(), 1):
     position = Position(x=0, y=0)
     model = params.get("model", "router")
     services = params.get("services", [])
@@ -99,12 +96,12 @@ for node, params in nodes_file.items():
     obj.config_services = services
     nodes[node] = NodeAux(obj, files, params, [])
     node_id += 1
-    G.add_node(node)
 
 ###############
 #### LINKS ####
 ###############
 ip_manager_mapper = {}
+G = nx.Graph()
 
 for link in links_file.values():
     n1, n2 = link["edges"]
